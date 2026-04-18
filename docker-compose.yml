@@ -1,0 +1,241 @@
+version: '3.8'
+
+services:
+  # ==============================
+  # Infrastructure
+  # ==============================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - hkshop-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - hkshop-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    networks:
+      - hkshop-network
+
+  # ==============================
+  # Databases
+  # ==============================
+  user-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "HKShop@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_DB: UserServiceDb
+    ports:
+      - "1433:1433"
+    volumes:
+      - user-db-data:/var/opt/mssql
+    networks:
+      - hkshop-network
+
+  product-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "HKShop@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_DB: ProductServiceDb
+    ports:
+      - "1434:1433"
+    volumes:
+      - product-db-data:/var/opt/mssql
+    networks:
+      - hkshop-network
+
+  cart-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "HKShop@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_DB: CartServiceDb
+    ports:
+      - "1435:1433"
+    volumes:
+      - cart-db-data:/var/opt/mssql
+    networks:
+      - hkshop-network
+
+  order-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "HKShop@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_DB: OrderServiceDb
+    ports:
+      - "1436:1433"
+    volumes:
+      - order-db-data:/var/opt/mssql
+    networks:
+      - hkshop-network
+
+  invoice-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "HKShop@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_DB: InvoiceServiceDb
+    ports:
+      - "1437:1433"
+    volumes:
+      - invoice-db-data:/var/opt/mssql
+    networks:
+      - hkshop-network
+
+  # ==============================
+  # Microservices
+  # ==============================
+  user-service:
+    build:
+      context: ./UserService
+      dockerfile: Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=user-db,1433;Database=UserServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - user-db
+      - kafka
+    networks:
+      - hkshop-network
+
+  product-service:
+    build:
+      context: ./ProductService
+      dockerfile: Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=product-db,1433;Database=ProductServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - product-db
+      - kafka
+    networks:
+      - hkshop-network
+
+  cart-service:
+    build:
+      context: ./CartService
+      dockerfile: Dockerfile
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=cart-db,1433;Database=CartServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - cart-db
+      - kafka
+    networks:
+      - hkshop-network
+
+  order-service:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=order-db,1433;Database=OrderServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - order-db
+      - kafka
+    networks:
+      - hkshop-network
+
+  invoice-service:
+    build:
+      context: ./InvoiceService
+      dockerfile: Dockerfile
+    ports:
+      - "5005:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=invoice-db,1433;Database=InvoiceServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - invoice-db
+      - kafka
+    networks:
+      - hkshop-network
+
+  api-gateway:
+    build:
+      context: ./ApiGateway
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=HKShopClients
+    depends_on:
+      - user-service
+      - product-service
+      - cart-service
+      - order-service
+      - invoice-service
+    networks:
+      - hkshop-network
+
+networks:
+  hkshop-network:
+    driver: bridge
+
+volumes:
+  user-db-data:
+  product-db-data:
+  cart-db-data:
+  order-db-data:
+  invoice-db-data:
