@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using InvoiceService.Data;
 using InvoiceService.Kafka;
+using InvoiceService.Repositories;
 using InvoiceService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,7 +42,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddDbContext<InvoiceDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret required");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -61,6 +62,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddHostedService<OrderCreatedConsumer>();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService.Services.InvoiceService>();
 builder.Services.AddScoped<IPdfExportService, PdfExportService>();
 builder.Services.AddScoped<IExcelReportService, ExcelReportService>();
 
@@ -72,10 +75,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<InvoiceDbContext>();
-    db.Database.Migrate();
+    await db.Database.MigrateAsync();
 }
 
 app.UseSwagger();
@@ -86,4 +89,4 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();

@@ -18,14 +18,14 @@ public class InvoiceDbContext : DbContext
         {
             entity.ToTable("HoaDon");
             entity.HasKey(e => e.MaHD);
-            entity.Property(e => e.MaHD).UseIdentityColumn(1, 1);
+            entity.Property(e => e.MaHD).UseIdentityByDefaultColumn();
         });
 
         modelBuilder.Entity<ChiTietHD>(entity =>
         {
             entity.ToTable("ChiTietHD");
             entity.HasKey(e => e.MaCT);
-            entity.Property(e => e.MaCT).UseIdentityColumn(1, 1);
+            entity.Property(e => e.MaCT).UseIdentityByDefaultColumn();
             entity.HasOne(e => e.HoaDon)
                   .WithMany(h => h.ChiTietHDs)
                   .HasForeignKey(e => e.MaHD)

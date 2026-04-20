@@ -18,7 +18,7 @@ public class CartDbContext : DbContext
         {
             entity.ToTable("Cart");
             entity.HasKey(e => e.MaCart);
-            entity.Property(e => e.MaCart).UseIdentityColumn(1, 1);
+            entity.Property(e => e.MaCart).UseIdentityByDefaultColumn();
             entity.HasIndex(e => new { e.MaKH, e.MaHH }).IsUnique();
         });
 

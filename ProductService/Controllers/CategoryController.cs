@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProductService.Data;
 using ProductService.DTOs;
-using ProductService.Models;
+using ProductService.Services;
 
 namespace ProductService.Controllers;
 
@@ -11,28 +9,18 @@ namespace ProductService.Controllers;
 [Route("api/[controller]")]
 public class LoaiController : ControllerBase
 {
-    private readonly ProductDbContext _context;
+    private readonly IProductService _productService;
 
-    public LoaiController(ProductDbContext context)
+    public LoaiController(IProductService productService)
     {
-        _context = context;
+        _productService = productService;
     }
 
     /// <summary>Lấy tất cả loại hàng hóa</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var loais = await _context.Loais
-            .Select(l => new
-            {
-                l.MaLoai,
-                l.TenLoai,
-                l.TenLoaiAlias,
-                l.MoTa,
-                l.Hinh,
-                SoHangHoa = l.HangHoas.Count
-            })
-            .ToListAsync();
+        var loais = await _productService.GetAllCategoriesAsync();
 
         return Ok(loais);
     }
@@ -41,21 +29,11 @@ public class LoaiController : ControllerBase
     [HttpGet("{maLoai}")]
     public async Task<IActionResult> GetById(int maLoai)
     {
-        var loai = await _context.Loais
-            .Include(l => l.HangHoas)
-            .FirstOrDefaultAsync(l => l.MaLoai == maLoai);
+        var loai = await _productService.GetCategoryByIdAsync(maLoai);
 
         if (loai == null) return NotFound();
 
-        return Ok(new
-        {
-            loai.MaLoai,
-            loai.TenLoai,
-            loai.TenLoaiAlias,
-            loai.MoTa,
-            loai.Hinh,
-            SoHangHoa = loai.HangHoas.Count
-        });
+        return Ok(loai);
     }
 
     /// <summary>Thêm loại hàng hóa mới (Admin)</summary>
@@ -66,15 +44,7 @@ public class LoaiController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var loai = new Loai
-        {
-            TenLoai = dto.TenLoai,
-            TenLoaiAlias = dto.TenLoaiAlias ?? dto.TenLoai.ToLower().Replace(" ", "-"),
-            MoTa = dto.MoTa,
-            Hinh = dto.Hinh
-        };
-        _context.Loais.Add(loai);
-        await _context.SaveChangesAsync();
+        var loai = await _productService.CreateCategoryAsync(dto);
 
         return CreatedAtAction(nameof(GetById), new { maLoai = loai.MaLoai }, loai);
     }
@@ -84,15 +54,9 @@ public class LoaiController : ControllerBase
     [Authorize(Roles = "1")]
     public async Task<IActionResult> Update(int maLoai, [FromBody] UpdateLoaiDto dto)
     {
-        var loai = await _context.Loais.FindAsync(maLoai);
+        var loai = await _productService.UpdateCategoryAsync(maLoai, dto);
         if (loai == null) return NotFound();
 
-        if (dto.TenLoai != null) loai.TenLoai = dto.TenLoai;
-        if (dto.TenLoaiAlias != null) loai.TenLoaiAlias = dto.TenLoaiAlias;
-        if (dto.MoTa != null) loai.MoTa = dto.MoTa;
-        if (dto.Hinh != null) loai.Hinh = dto.Hinh;
-
-        await _context.SaveChangesAsync();
         return Ok(loai);
     }
 
@@ -101,15 +65,10 @@ public class LoaiController : ControllerBase
     [Authorize(Roles = "1")]
     public async Task<IActionResult> Delete(int maLoai)
     {
-        var loai = await _context.Loais.Include(l => l.HangHoas).FirstOrDefaultAsync(l => l.MaLoai == maLoai);
-        if (loai == null) return NotFound();
+        var result = await _productService.DeleteCategoryAsync(maLoai);
+        if (result.Success) return Ok(new { message = result.Message });
+        if (result.Message == "Không tìm thấy loại hàng hóa") return NotFound();
 
-        if (loai.HangHoas.Any())
-            return BadRequest(new { message = "Không thể xóa loại đang có hàng hóa" });
-
-        _context.Loais.Remove(loai);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Xóa loại thành công" });
+        return BadRequest(new { message = result.Message });
     }
 }

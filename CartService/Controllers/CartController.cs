@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using CartService.Data;
 using CartService.DTOs;
-using CartService.Kafka;
-using CartService.Models;
+using CartService.Services;
 
 namespace CartService.Controllers;
 
@@ -13,13 +10,11 @@ namespace CartService.Controllers;
 [Authorize]
 public class CartController : ControllerBase
 {
-    private readonly CartDbContext _context;
-    private readonly IKafkaProducer _kafkaProducer;
+    private readonly ICartService _cartService;
 
-    public CartController(CartDbContext context, IKafkaProducer kafkaProducer)
+    public CartController(ICartService cartService)
     {
-        _context = context;
-        _kafkaProducer = kafkaProducer;
+        _cartService = cartService;
     }
 
     /// <summary>Lấy giỏ hàng của khách hàng</summary>
@@ -30,37 +25,8 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var cartItems = await _context.Carts
-            .Where(c => c.MaKH == maKH)
-            .OrderByDescending(c => c.NgayThem)
-            .ToListAsync();
-
-        var maHHList = cartItems.Select(c => c.MaHH).ToList();
-        var hangHoaCache = await _context.HangHoaCaches
-            .Where(h => maHHList.Contains(h.MaHH))
-            .ToDictionaryAsync(h => h.MaHH);
-
-        var items = cartItems.Select(c =>
-        {
-            hangHoaCache.TryGetValue(c.MaHH, out var hh);
-            return new CartItemResponseDto
-            {
-                MaCart = c.MaCart,
-                MaHH = c.MaHH,
-                TenHH = hh?.TenHH ?? $"Sản phẩm #{c.MaHH}",
-                Hinh = hh?.Hinh,
-                SoLuong = c.SoLuong,
-                DonGia = c.DonGia,
-                GiamGia = hh?.GiamGia ?? 0,
-                NgayThem = c.NgayThem
-            };
-        }).ToList();
-
-        return Ok(new CartSummaryDto
-        {
-            MaKH = maKH,
-            Items = items
-        });
+        var cart = await _cartService.GetCartAsync(maKH);
+        return Ok(cart);
     }
 
     /// <summary>Thêm sản phẩm vào giỏ hàng</summary>
@@ -71,41 +37,8 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var hangHoa = await _context.HangHoaCaches.FindAsync(dto.MaHH);
-        if (hangHoa == null)
-            return BadRequest(new { message = "Sản phẩm không tồn tại trong hệ thống" });
-
-        var existing = await _context.Carts
-            .FirstOrDefaultAsync(c => c.MaKH == maKH && c.MaHH == dto.MaHH);
-
-        if (existing != null)
-        {
-            existing.SoLuong += dto.SoLuong;
-            existing.DonGia = hangHoa.DonGia;
-        }
-        else
-        {
-            _context.Carts.Add(new Cart
-            {
-                MaKH = maKH,
-                MaHH = dto.MaHH,
-                SoLuong = dto.SoLuong,
-                DonGia = hangHoa.DonGia,
-                NgayThem = DateTime.Now
-            });
-        }
-
-        await _context.SaveChangesAsync();
-
-        await _kafkaProducer.ProduceAsync("cart.updated", new
-        {
-            MaKH = maKH,
-            MaHH = dto.MaHH,
-            Action = "add",
-            SoLuong = dto.SoLuong
-        });
-
-        return Ok(new { message = "Đã thêm vào giỏ hàng" });
+        var result = await _cartService.AddToCartAsync(maKH, dto);
+        return result.Success ? Ok(new { message = result.Message }) : BadRequest(new { message = result.Message });
     }
 
     /// <summary>Cập nhật số lượng sản phẩm trong giỏ hàng</summary>
@@ -116,13 +49,8 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var cartItem = await _context.Carts
-            .FirstOrDefaultAsync(c => c.MaCart == maCart && c.MaKH == maKH);
-
-        if (cartItem == null) return NotFound();
-
-        cartItem.SoLuong = dto.SoLuong;
-        await _context.SaveChangesAsync();
+        var updated = await _cartService.UpdateCartAsync(maKH, maCart, dto);
+        if (!updated) return NotFound();
 
         return Ok(new { message = "Cập nhật giỏ hàng thành công" });
     }
@@ -135,20 +63,8 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var cartItem = await _context.Carts
-            .FirstOrDefaultAsync(c => c.MaCart == maCart && c.MaKH == maKH);
-
-        if (cartItem == null) return NotFound();
-
-        _context.Carts.Remove(cartItem);
-        await _context.SaveChangesAsync();
-
-        await _kafkaProducer.ProduceAsync("cart.updated", new
-        {
-            MaKH = maKH,
-            MaHH = cartItem.MaHH,
-            Action = "remove"
-        });
+        var removed = await _cartService.RemoveFromCartAsync(maKH, maCart);
+        if (!removed) return NotFound();
 
         return Ok(new { message = "Đã xóa khỏi giỏ hàng" });
     }
@@ -161,11 +77,7 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var items = await _context.Carts.Where(c => c.MaKH == maKH).ToListAsync();
-        _context.Carts.RemoveRange(items);
-        await _context.SaveChangesAsync();
-
-        await _kafkaProducer.ProduceAsync("cart.cleared", new { MaKH = maKH });
+        await _cartService.ClearCartAsync(maKH);
 
         return Ok(new { message = "Đã xóa toàn bộ giỏ hàng" });
     }
@@ -178,9 +90,7 @@ public class CartController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var count = await _context.Carts
-            .Where(c => c.MaKH == maKH)
-            .SumAsync(c => c.SoLuong);
+        var count = await _cartService.GetCartCountAsync(maKH);
 
         return Ok(new { count });
     }

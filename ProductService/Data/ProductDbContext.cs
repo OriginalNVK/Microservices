@@ -18,14 +18,14 @@ public class ProductDbContext : DbContext
         {
             entity.ToTable("Loai");
             entity.HasKey(e => e.MaLoai);
-            entity.Property(e => e.MaLoai).UseIdentityColumn(1, 1);
+            entity.Property(e => e.MaLoai).UseIdentityByDefaultColumn();
         });
 
         modelBuilder.Entity<HangHoa>(entity =>
         {
             entity.ToTable("HangHoa");
             entity.HasKey(e => e.MaHH);
-            entity.Property(e => e.MaHH).UseIdentityColumn(1, 1);
+            entity.Property(e => e.MaHH).UseIdentityByDefaultColumn();
             entity.HasOne(e => e.Loai)
                   .WithMany(l => l.HangHoas)
                   .HasForeignKey(e => e.MaLoai)

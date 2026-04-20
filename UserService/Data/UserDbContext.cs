@@ -19,7 +19,7 @@ public class UserDbContext : DbContext
         {
             entity.ToTable("NguoiDung");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).UseIdentityColumn(1, 1);
+            entity.Property(e => e.Id).UseIdentityByDefaultColumn();
             entity.HasIndex(e => e.TenDangNhap).IsUnique();
         });
 

@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using UserService.Data;
 using UserService.DTOs;
-using UserService.Kafka;
+using UserService.Services;
 
 namespace UserService.Controllers;
 
@@ -12,13 +10,11 @@ namespace UserService.Controllers;
 [Authorize]
 public class KhachHangController : ControllerBase
 {
-    private readonly UserDbContext _context;
-    private readonly IKafkaProducer _kafkaProducer;
+    private readonly IUserManagementService _userManagementService;
 
-    public KhachHangController(UserDbContext context, IKafkaProducer kafkaProducer)
+    public KhachHangController(IUserManagementService userManagementService)
     {
-        _context = context;
-        _kafkaProducer = kafkaProducer;
+        _userManagementService = userManagementService;
     }
 
     /// <summary>Lấy thông tin khách hàng hiện tại</summary>
@@ -29,25 +25,11 @@ public class KhachHangController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var kh = await _context.KhachHangs
-            .Include(k => k.NguoiDung)
-            .FirstOrDefaultAsync(k => k.MaKH == maKH);
+        var kh = await _userManagementService.GetCustomerProfileAsync(maKH);
 
         if (kh == null) return NotFound();
 
-        return Ok(new
-        {
-            kh.MaKH,
-            kh.HoTen,
-            kh.GioiTinh,
-            kh.NgaySinh,
-            kh.DiaChi,
-            kh.DienThoai,
-            kh.Email,
-            kh.Hinh,
-            TenDangNhap = kh.NguoiDung.TenDangNhap,
-            NgayTao = kh.NguoiDung.NgayTao
-        });
+        return Ok(kh);
     }
 
     /// <summary>Cập nhật thông tin khách hàng</summary>
@@ -58,26 +40,8 @@ public class KhachHangController : ControllerBase
         if (string.IsNullOrEmpty(maKH))
             return Forbid();
 
-        var kh = await _context.KhachHangs.FirstOrDefaultAsync(k => k.MaKH == maKH);
-        if (kh == null) return NotFound();
-
-        if (dto.HoTen != null) kh.HoTen = dto.HoTen;
-        if (dto.GioiTinh.HasValue) kh.GioiTinh = dto.GioiTinh.Value;
-        if (dto.NgaySinh.HasValue) kh.NgaySinh = dto.NgaySinh.Value;
-        if (dto.DiaChi != null) kh.DiaChi = dto.DiaChi;
-        if (dto.DienThoai != null) kh.DienThoai = dto.DienThoai;
-        if (dto.Hinh != null) kh.Hinh = dto.Hinh;
-
-        await _context.SaveChangesAsync();
-
-        await _kafkaProducer.ProduceAsync("customer.updated", new
-        {
-            MaKH = kh.MaKH,
-            HoTen = kh.HoTen,
-            DiaChi = kh.DiaChi,
-            DienThoai = kh.DienThoai,
-            UpdatedAt = DateTime.UtcNow
-        });
+        var updated = await _userManagementService.UpdateCustomerProfileAsync(maKH, dto);
+        if (!updated) return NotFound();
 
         return Ok(new { message = "Cập nhật thông tin thành công" });
     }
@@ -87,29 +51,8 @@ public class KhachHangController : ControllerBase
     [Authorize(Roles = "1")]
     public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string? search = null)
     {
-        var query = _context.KhachHangs.AsQueryable();
-
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(k => k.HoTen.Contains(search) || k.Email.Contains(search));
-
-        var total = await query.CountAsync();
-        var items = await query
-            .Skip((page - 1) * size)
-            .Take(size)
-            .Select(k => new
-            {
-                k.MaKH,
-                k.HoTen,
-                k.GioiTinh,
-                k.NgaySinh,
-                k.DiaChi,
-                k.DienThoai,
-                k.Email,
-                k.Hinh
-            })
-            .ToListAsync();
-
-        return Ok(new { total, page, size, items });
+        var data = await _userManagementService.GetCustomersAsync(page, size, search);
+        return Ok(data);
     }
 
     /// <summary>Lấy thông tin khách hàng theo mã (Admin)</summary>
@@ -117,25 +60,11 @@ public class KhachHangController : ControllerBase
     [Authorize(Roles = "1")]
     public async Task<IActionResult> GetById(string maKH)
     {
-        var kh = await _context.KhachHangs
-            .Include(k => k.NguoiDung)
-            .FirstOrDefaultAsync(k => k.MaKH == maKH);
+        var kh = await _userManagementService.GetCustomerByIdAsync(maKH);
 
         if (kh == null) return NotFound();
 
-        return Ok(new
-        {
-            kh.MaKH,
-            kh.HoTen,
-            kh.GioiTinh,
-            kh.NgaySinh,
-            kh.DiaChi,
-            kh.DienThoai,
-            kh.Email,
-            kh.Hinh,
-            TenDangNhap = kh.NguoiDung.TenDangNhap,
-            HieuLuc = kh.NguoiDung.HieuLuc
-        });
+        return Ok(kh);
     }
 
     /// <summary>Khóa/mở khóa tài khoản (Admin)</summary>
@@ -143,15 +72,9 @@ public class KhachHangController : ControllerBase
     [Authorize(Roles = "1")]
     public async Task<IActionResult> ToggleLock(string maKH)
     {
-        var kh = await _context.KhachHangs
-            .Include(k => k.NguoiDung)
-            .FirstOrDefaultAsync(k => k.MaKH == maKH);
+        var enabled = await _userManagementService.ToggleCustomerLockAsync(maKH);
+        if (!enabled.HasValue) return NotFound();
 
-        if (kh == null) return NotFound();
-
-        kh.NguoiDung.HieuLuc = !kh.NguoiDung.HieuLuc;
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = kh.NguoiDung.HieuLuc ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản" });
+        return Ok(new { message = enabled.Value ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản" });
     }
 }

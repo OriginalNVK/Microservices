@@ -24,7 +24,7 @@
         │            │            │            │            │
    ┌────▼─────┐ ┌────▼─────┐ ┌────▼─────┐ ┌────▼─────┐ ┌────▼─────┐
    │ UserDB   │ │ProductDB │ │  CartDB  │ │ OrderDB  │ │InvoiceDB │
-   │ :1433    │ │ :1434    │ │ :1435    │ │ :1436    │ │ :1437    │
+   │ :5433    │ │ :5434    │ │ :5435    │ │ :5436    │ │ :5437    │
    └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
                                     │
               ┌─────────────────────▼──────────────────────┐
@@ -213,7 +213,7 @@ Sau khi chạy:
 ## Công nghệ sử dụng
 
 - **Framework**: ASP.NET Core 8
-- **ORM**: Entity Framework Core 8 + SQL Server
+- **ORM**: Entity Framework Core 8 + PostgreSQL
 - **Authentication**: JWT Bearer Token
 - **Message Broker**: Apache Kafka (Confluent.Kafka)
 - **API Gateway**: YARP Reverse Proxy

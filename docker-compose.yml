@@ -47,67 +47,67 @@ services:
   # Databases
   # ==============================
   user-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16-alpine
     environment:
-      SA_PASSWORD: "HKShop@2024!"
-      ACCEPT_EULA: "Y"
-      MSSQL_DB: UserServiceDb
+      POSTGRES_DB: UserServiceDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "1433:1433"
+      - "5433:5432"
     volumes:
-      - user-db-data:/var/opt/mssql
+      - user-db-data:/var/lib/postgresql/data
     networks:
       - hkshop-network
 
   product-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16-alpine
     environment:
-      SA_PASSWORD: "HKShop@2024!"
-      ACCEPT_EULA: "Y"
-      MSSQL_DB: ProductServiceDb
+      POSTGRES_DB: ProductServiceDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "1434:1433"
+      - "5434:5432"
     volumes:
-      - product-db-data:/var/opt/mssql
+      - product-db-data:/var/lib/postgresql/data
     networks:
       - hkshop-network
 
   cart-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16-alpine
     environment:
-      SA_PASSWORD: "HKShop@2024!"
-      ACCEPT_EULA: "Y"
-      MSSQL_DB: CartServiceDb
+      POSTGRES_DB: CartServiceDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "1435:1433"
+      - "5435:5432"
     volumes:
-      - cart-db-data:/var/opt/mssql
+      - cart-db-data:/var/lib/postgresql/data
     networks:
       - hkshop-network
 
   order-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16-alpine
     environment:
-      SA_PASSWORD: "HKShop@2024!"
-      ACCEPT_EULA: "Y"
-      MSSQL_DB: OrderServiceDb
+      POSTGRES_DB: OrderServiceDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "1436:1433"
+      - "5436:5432"
     volumes:
-      - order-db-data:/var/opt/mssql
+      - order-db-data:/var/lib/postgresql/data
     networks:
       - hkshop-network
 
   invoice-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16-alpine
     environment:
-      SA_PASSWORD: "HKShop@2024!"
-      ACCEPT_EULA: "Y"
-      MSSQL_DB: InvoiceServiceDb
+      POSTGRES_DB: InvoiceServiceDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "1437:1433"
+      - "5437:5432"
     volumes:
-      - invoice-db-data:/var/opt/mssql
+      - invoice-db-data:/var/lib/postgresql/data
     networks:
       - hkshop-network
 
@@ -122,7 +122,7 @@ services:
       - "5001:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=user-db,1433;Database=UserServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=user-db;Port=5432;Database=UserServiceDb;Username=postgres;Password=postgres
       - Kafka__BootstrapServers=kafka:29092
       - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
       - Jwt__Issuer=UserService
@@ -141,7 +141,7 @@ services:
       - "5002:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=product-db,1433;Database=ProductServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=product-db;Port=5432;Database=ProductServiceDb;Username=postgres;Password=postgres
       - Kafka__BootstrapServers=kafka:29092
       - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
       - Jwt__Issuer=UserService
@@ -160,7 +160,7 @@ services:
       - "5003:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=cart-db,1433;Database=CartServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=cart-db;Port=5432;Database=CartServiceDb;Username=postgres;Password=postgres
       - Kafka__BootstrapServers=kafka:29092
       - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
       - Jwt__Issuer=UserService
@@ -179,7 +179,7 @@ services:
       - "5004:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=order-db,1433;Database=OrderServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=order-db;Port=5432;Database=OrderServiceDb;Username=postgres;Password=postgres
       - Kafka__BootstrapServers=kafka:29092
       - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
       - Jwt__Issuer=UserService
@@ -198,7 +198,7 @@ services:
       - "5005:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=invoice-db,1433;Database=InvoiceServiceDb;User Id=sa;Password=HKShop@2024!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Host=invoice-db;Port=5432;Database=InvoiceServiceDb;Username=postgres;Password=postgres
       - Kafka__BootstrapServers=kafka:29092
       - Jwt__Secret=HKShopSuperSecretKeyForJWT2024!
       - Jwt__Issuer=UserService
