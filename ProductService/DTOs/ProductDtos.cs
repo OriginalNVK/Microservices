@@ -2,101 +2,101 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ProductService.DTOs;
 
-public class CreateLoaiDto
+public class CreateCategoryDto
 {
-    [Required(ErrorMessage = "Tên loại là bắt buộc")]
+    [Required(ErrorMessage = "Category name is required")]
     [MaxLength(50)]
-    public string TenLoai { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
 
     [MaxLength(50)]
-    public string? TenLoaiAlias { get; set; }
+    public string? CategoryAlias { get; set; }
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 }
 
-public class UpdateLoaiDto
+public class UpdateCategoryDto
 {
     [MaxLength(50)]
-    public string? TenLoai { get; set; }
+    public string? CategoryName { get; set; }
 
     [MaxLength(50)]
-    public string? TenLoaiAlias { get; set; }
+    public string? CategoryAlias { get; set; }
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 }
 
-public class CreateHangHoaDto
+public class CreateProductDto
 {
-    [Required(ErrorMessage = "Tên hàng hóa là bắt buộc")]
+    [Required(ErrorMessage = "Product name is required")]
     [MaxLength(100)]
-    public string TenHH { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
 
     [MaxLength(100)]
-    public string? TenAlias { get; set; }
+    public string? ProductAlias { get; set; }
 
     [Required]
-    public int MaLoai { get; set; }
+    public int CategoryId { get; set; }
 
     [MaxLength(50)]
-    public string? MoTaDonVi { get; set; }
+    public string? DescriptionUnit { get; set; }
 
     [Range(0, double.MaxValue)]
-    public decimal? DonGia { get; set; }
+    public decimal? Price { get; set; }
 
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 
     [Required]
-    public DateOnly NgaySX { get; set; }
+    public DateOnly CreatedDate { get; set; }
 
     [Range(0, 100)]
-    public decimal GiamGia { get; set; } = 0;
+    public decimal Discount { get; set; } = 0;
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 }
 
-public class UpdateHangHoaDto
+public class UpdateProductDto
 {
     [MaxLength(100)]
-    public string? TenHH { get; set; }
+    public string? ProductName { get; set; }
 
     [MaxLength(100)]
-    public string? TenAlias { get; set; }
+    public string? ProductAlias { get; set; }
 
-    public int? MaLoai { get; set; }
+    public int? CategoryId { get; set; }
 
     [MaxLength(50)]
-    public string? MoTaDonVi { get; set; }
+    public string? DescriptionUnit { get; set; }
 
     [Range(0, double.MaxValue)]
-    public decimal? DonGia { get; set; }
+    public decimal? Price { get; set; }
 
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 
-    public DateOnly? NgaySX { get; set; }
+    public DateOnly? CreatedDate { get; set; }
 
     [Range(0, 100)]
-    public decimal? GiamGia { get; set; }
+    public decimal? Discount { get; set; }
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 }
 
-public class HangHoaResponseDto
+public class ProductResponseDto
 {
-    public int MaHH { get; set; }
-    public string TenHH { get; set; } = string.Empty;
-    public string? TenAlias { get; set; }
-    public int MaLoai { get; set; }
-    public string TenLoai { get; set; } = string.Empty;
-    public string? MoTaDonVi { get; set; }
-    public decimal? DonGia { get; set; }
-    public decimal GiaSauGiam => DonGia.HasValue ? DonGia.Value * (1 - GiamGia / 100) : 0;
-    public string? Hinh { get; set; }
-    public DateOnly NgaySX { get; set; }
-    public decimal GiamGia { get; set; }
-    public int LuotMua { get; set; }
-    public string? MoTa { get; set; }
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public string? ProductAlias { get; set; }
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string? DescriptionUnit { get; set; }
+    public decimal? Price { get; set; }
+    public decimal DiscountedPrice => Price.HasValue ? Price.Value * (1 - Discount / 100) : 0;
+    public string? Image { get; set; }
+    public DateOnly CreatedDate { get; set; }
+    public decimal Discount { get; set; }
+    public int PurchaseCount { get; set; }
+    public string? Description { get; set; }
 }

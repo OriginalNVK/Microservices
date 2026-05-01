@@ -8,30 +8,14 @@ namespace ProductService.Services;
 
 public class ProductQueryFilter
 {
-	public int? MaLoai { get; set; }
+	public int? CategoryId { get; set; }
 	public string? Search { get; set; }
-	public decimal? MinGia { get; set; }
-	public decimal? MaxGia { get; set; }
-	public string? SortBy { get; set; } = "tenHH";
+	public decimal? MinPrice { get; set; }
+	public decimal? MaxPrice { get; set; }
+	public string? SortBy { get; set; } = "name";
 	public bool Ascending { get; set; } = true;
 	public int Page { get; set; } = 1;
 	public int Size { get; set; } = 12;
-}
-
-public interface IProductService
-{
-	Task<object> GetAllProductsAsync(ProductQueryFilter filter);
-	Task<HangHoaResponseDto?> GetProductByIdAsync(int maHH);
-	Task<(bool Success, string Message, int MaHH)> CreateProductAsync(CreateHangHoaDto dto);
-	Task<(bool Success, string Message)> UpdateProductAsync(int maHH, UpdateHangHoaDto dto);
-	Task<bool> DeleteProductAsync(int maHH);
-	Task<List<HangHoaResponseDto>> GetBestSellersAsync(int top);
-	Task<List<HangHoaResponseDto>> GetOnSaleAsync();
-	Task<List<object>> GetAllCategoriesAsync();
-	Task<object?> GetCategoryByIdAsync(int maLoai);
-	Task<Loai> CreateCategoryAsync(CreateLoaiDto dto);
-	Task<Loai?> UpdateCategoryAsync(int maLoai, UpdateLoaiDto dto);
-	Task<(bool Success, string Message)> DeleteCategoryAsync(int maLoai);
 }
 
 public class ProductService : IProductService
@@ -47,23 +31,24 @@ public class ProductService : IProductService
 
 	public async Task<object> GetAllProductsAsync(ProductQueryFilter filter)
 	{
-		var query = _repository.HangHoas.Include(h => h.Loai).AsQueryable();
+		var query = _repository.Products.Include(p => p.Category).AsQueryable();
 
-		if (filter.MaLoai.HasValue)
-			query = query.Where(h => h.MaLoai == filter.MaLoai);
+		if (filter.CategoryId.HasValue)
+			query = query.Where(p => p.CategoryId == filter.CategoryId);
 		if (!string.IsNullOrEmpty(filter.Search))
-			query = query.Where(h => h.TenHH.Contains(filter.Search) || (h.MoTa != null && h.MoTa.Contains(filter.Search)));
-		if (filter.MinGia.HasValue)
-			query = query.Where(h => h.DonGia >= filter.MinGia);
-		if (filter.MaxGia.HasValue)
-			query = query.Where(h => h.DonGia <= filter.MaxGia);
+			query = query.Where(p => p.ProductName.Contains(filter.Search) || (p.Description != null && p.Description.Contains(filter.Search)));
+		if (filter.MinPrice.HasValue)
+			query = query.Where(p => p.Price >= filter.MinPrice);
+		if (filter.MaxPrice.HasValue)
+			query = query.Where(p => p.Price <= filter.MaxPrice);
 
 		query = filter.SortBy?.ToLower() switch
 		{
-			"dongia" => filter.Ascending ? query.OrderBy(h => h.DonGia) : query.OrderByDescending(h => h.DonGia),
-			"luotmua" => filter.Ascending ? query.OrderBy(h => h.LuotMua) : query.OrderByDescending(h => h.LuotMua),
-			"giamgia" => filter.Ascending ? query.OrderBy(h => h.GiamGia) : query.OrderByDescending(h => h.GiamGia),
-			_ => filter.Ascending ? query.OrderBy(h => h.TenHH) : query.OrderByDescending(h => h.TenHH)
+			"price" => filter.Ascending ? query.OrderBy(p => p.Price) : query.OrderByDescending(p => p.Price),
+			"purchasecount" => filter.Ascending ? query.OrderBy(p => p.PurchaseCount) : query.OrderByDescending(p => p.PurchaseCount),
+			"discount" => filter.Ascending ? query.OrderBy(p => p.Discount) : query.OrderByDescending(p => p.Discount),
+			"createddate" => filter.Ascending ? query.OrderBy(p => p.CreatedDate) : query.OrderByDescending(p => p.CreatedDate),
+			_ => filter.Ascending ? query.OrderBy(p => p.ProductName) : query.OrderByDescending(p => p.ProductName)
 		};
 
 		var total = await query.CountAsync();
@@ -72,253 +57,263 @@ public class ProductService : IProductService
 			.Take(filter.Size)
 			.ToListAsync();
 
-		var items = entities.Select(MapHangHoaResponse).ToList();
+		var items = entities.Select(MapProductResponse).ToList();
 
 		return new { total, page = filter.Page, size = filter.Size, items };
 	}
 
-	public Task<HangHoaResponseDto?> GetProductByIdAsync(int maHH) =>
-		_repository.HangHoas
-			.Include(h => h.Loai)
-			.Where(h => h.MaHH == maHH)
-			.Select(h => new HangHoaResponseDto
+	public Task<ProductResponseDto?> GetProductByIdAsync(int productId) =>
+		_repository.Products
+			.Include(p => p.Category)
+			.Where(p => p.ProductId == productId)
+			.Select(p => new ProductResponseDto
 			{
-				MaHH = h.MaHH,
-				TenHH = h.TenHH,
-				TenAlias = h.TenAlias,
-				MaLoai = h.MaLoai,
-				TenLoai = h.Loai.TenLoai,
-				MoTaDonVi = h.MoTaDonVi,
-				DonGia = h.DonGia,
-				Hinh = h.Hinh,
-				NgaySX = h.NgaySX,
-				GiamGia = h.GiamGia,
-				LuotMua = h.LuotMua,
-				MoTa = h.MoTa
+				ProductId = p.ProductId,
+				ProductName = p.ProductName,
+				ProductAlias = p.ProductAlias,
+				CategoryId = p.CategoryId,
+				CategoryName = p.Category.CategoryName,
+				DescriptionUnit = p.DescriptionUnit,
+				Price = p.Price,
+				Image = p.Image,
+				CreatedDate = p.CreatedDate,
+				Discount = p.Discount,
+				PurchaseCount = p.PurchaseCount,
+				Description = p.Description
 			})
 			.FirstOrDefaultAsync();
 
-	public async Task<(bool Success, string Message, int MaHH)> CreateProductAsync(CreateHangHoaDto dto)
+	public async Task<(bool Success, string Message, int ProductId)> CreateProductAsync(CreateProductDto dto)
 	{
-		if (!await _repository.Loais.AnyAsync(l => l.MaLoai == dto.MaLoai))
-			return (false, "Loại hàng hóa không tồn tại", 0);
+		if (!await _repository.Categories.AnyAsync(l => l.CategoryId == dto.CategoryId))
+			return (false, "Category does not exist", 0);
 
-		var hh = new HangHoa
+		var product = new Product
 		{
-			TenHH = dto.TenHH,
-			TenAlias = dto.TenAlias ?? dto.TenHH.ToLower().Replace(" ", "-"),
-			MaLoai = dto.MaLoai,
-			MoTaDonVi = dto.MoTaDonVi,
-			DonGia = dto.DonGia,
-			Hinh = dto.Hinh,
-			NgaySX = dto.NgaySX,
-			GiamGia = dto.GiamGia,
-			LuotMua = 0,
-			MoTa = dto.MoTa
+			ProductName = dto.ProductName,
+			ProductAlias = dto.ProductAlias ?? dto.ProductName.ToLower().Replace(" ", "-"),
+			CategoryId = dto.CategoryId,
+			DescriptionUnit = dto.DescriptionUnit,
+			Price = dto.Price,
+			Image = dto.Image,
+			CreatedDate = dto.CreatedDate,
+			Discount = dto.Discount,
+			PurchaseCount = 0,
+			Description = dto.Description
 		};
 
-		await _repository.AddHangHoaAsync(hh);
+		await _repository.AddProductAsync(product);
 		await _repository.SaveChangesAsync();
 
 		await _kafkaProducer.ProduceAsync("product.created", new
 		{
-			MaHH = hh.MaHH,
-			TenHH = hh.TenHH,
-			DonGia = hh.DonGia,
-			GiamGia = hh.GiamGia,
-			Hinh = hh.Hinh,
+			ProductId = product.ProductId,
+			ProductName = product.ProductName,
+			Price = product.Price,
+			Discount = product.Discount,
+			Image = product.Image,
 			CreatedAt = DateTime.UtcNow
 		});
 
-		return (true, "Tạo hàng hóa thành công", hh.MaHH);
+		return (true, "Product created successfully", product.ProductId);
 	}
 
-	public async Task<(bool Success, string Message)> UpdateProductAsync(int maHH, UpdateHangHoaDto dto)
+	public async Task<(bool Success, string Message)> UpdateProductAsync(int productId, UpdateProductDto dto)
 	{
-		var hh = await _repository.FindHangHoaByIdAsync(maHH);
-		if (hh == null) return (false, "Không tìm thấy hàng hóa");
+		var product = await _repository.FindProductByIdAsync(productId);
+		if (product == null) return (false, "Product not found");
 
-		if (dto.MaLoai.HasValue && !await _repository.Loais.AnyAsync(l => l.MaLoai == dto.MaLoai))
-			return (false, "Loại hàng hóa không tồn tại");
+		if (dto.CategoryId.HasValue && !await _repository.Categories.AnyAsync(l => l.CategoryId == dto.CategoryId))
+			return (false, "Category does not exist");
 
-		if (dto.TenHH != null) hh.TenHH = dto.TenHH;
-		if (dto.TenAlias != null) hh.TenAlias = dto.TenAlias;
-		if (dto.MaLoai.HasValue) hh.MaLoai = dto.MaLoai.Value;
-		if (dto.MoTaDonVi != null) hh.MoTaDonVi = dto.MoTaDonVi;
-		if (dto.DonGia.HasValue) hh.DonGia = dto.DonGia;
-		if (dto.Hinh != null) hh.Hinh = dto.Hinh;
-		if (dto.NgaySX.HasValue) hh.NgaySX = dto.NgaySX.Value;
-		if (dto.GiamGia.HasValue) hh.GiamGia = dto.GiamGia.Value;
-		if (dto.MoTa != null) hh.MoTa = dto.MoTa;
+		if (dto.ProductName != null) product.ProductName = dto.ProductName;
+		if (dto.ProductAlias != null) product.ProductAlias = dto.ProductAlias;
+		if (dto.CategoryId.HasValue) product.CategoryId = dto.CategoryId.Value;
+		if (dto.DescriptionUnit != null) product.DescriptionUnit = dto.DescriptionUnit;
+		if (dto.Price.HasValue) product.Price = dto.Price;
+		if (dto.Image != null) product.Image = dto.Image;
+		if (dto.CreatedDate.HasValue) product.CreatedDate = dto.CreatedDate.Value;
+		if (dto.Discount.HasValue) product.Discount = dto.Discount.Value;
+		if (dto.Description != null) product.Description = dto.Description;
 
 		await _repository.SaveChangesAsync();
 
 		await _kafkaProducer.ProduceAsync("product.updated", new
 		{
-			MaHH = hh.MaHH,
-			TenHH = hh.TenHH,
-			DonGia = hh.DonGia,
-			GiamGia = hh.GiamGia,
-			Hinh = hh.Hinh,
+			ProductId = product.ProductId,
+			ProductName = product.ProductName,
+			Price = product.Price,
+			Discount = product.Discount,
+			Image = product.Image,
 			UpdatedAt = DateTime.UtcNow
 		});
 
-		return (true, "Cập nhật thành công");
+		return (true, "Product updated successfully");
 	}
 
-	public async Task<bool> DeleteProductAsync(int maHH)
+	public async Task<bool> DeleteProductAsync(int productId)
 	{
-		var hh = await _repository.FindHangHoaByIdAsync(maHH);
-		if (hh == null) return false;
+		var product = await _repository.FindProductByIdAsync(productId);
+		if (product == null) return false;
 
-		_repository.RemoveHangHoa(hh);
+		_repository.RemoveProduct(product);
 		await _repository.SaveChangesAsync();
 
 		await _kafkaProducer.ProduceAsync("product.deleted", new
 		{
-			MaHH = maHH,
+			ProductId = productId,
 			DeletedAt = DateTime.UtcNow
 		});
 
 		return true;
 	}
 
-	public Task<List<HangHoaResponseDto>> GetBestSellersAsync(int top) =>
-		_repository.HangHoas
-			.Include(h => h.Loai)
-			.OrderByDescending(h => h.LuotMua)
+	public Task<List<ProductResponseDto>> GetBestSellersAsync(int top) =>
+		_repository.Products
+			.Include(p => p.Category)
+			.OrderByDescending(p => p.PurchaseCount)
 			.Take(top)
-			.Select(h => new HangHoaResponseDto
+			.Select(p => new ProductResponseDto
 			{
-				MaHH = h.MaHH,
-				TenHH = h.TenHH,
-				TenAlias = h.TenAlias,
-				MaLoai = h.MaLoai,
-				TenLoai = h.Loai.TenLoai,
-				MoTaDonVi = h.MoTaDonVi,
-				DonGia = h.DonGia,
-				Hinh = h.Hinh,
-				NgaySX = h.NgaySX,
-				GiamGia = h.GiamGia,
-				LuotMua = h.LuotMua,
-				MoTa = h.MoTa
+				ProductId = p.ProductId,
+				ProductName = p.ProductName,
+				ProductAlias = p.ProductAlias,
+				CategoryId = p.CategoryId,
+				CategoryName = p.Category.CategoryName,
+				DescriptionUnit = p.DescriptionUnit,
+				Price = p.Price,
+				Image = p.Image,
+				CreatedDate = p.CreatedDate,
+				Discount = p.Discount,
+				PurchaseCount = p.PurchaseCount,
+				Description = p.Description
 			})
 			.ToListAsync();
 
-	public Task<List<HangHoaResponseDto>> GetOnSaleAsync() =>
-		_repository.HangHoas
-			.Include(h => h.Loai)
-			.Where(h => h.GiamGia > 0)
-			.OrderByDescending(h => h.GiamGia)
-			.Select(h => new HangHoaResponseDto
+	public Task<List<ProductResponseDto>> GetOnSaleAsync() =>
+		_repository.Products
+			.Include(p => p.Category)
+			.Where(p => p.Discount > 0)
+			.OrderByDescending(p => p.Discount)
+			.Select(p => new ProductResponseDto
 			{
-				MaHH = h.MaHH,
-				TenHH = h.TenHH,
-				TenAlias = h.TenAlias,
-				MaLoai = h.MaLoai,
-				TenLoai = h.Loai.TenLoai,
-				MoTaDonVi = h.MoTaDonVi,
-				DonGia = h.DonGia,
-				Hinh = h.Hinh,
-				NgaySX = h.NgaySX,
-				GiamGia = h.GiamGia,
-				LuotMua = h.LuotMua,
-				MoTa = h.MoTa
+				ProductId = p.ProductId,
+				ProductName = p.ProductName,
+				ProductAlias = p.ProductAlias,
+				CategoryId = p.CategoryId,
+				CategoryName = p.Category.CategoryName,
+				DescriptionUnit = p.DescriptionUnit,
+				Price = p.Price,
+				Image = p.Image,
+				CreatedDate = p.CreatedDate,
+				Discount = p.Discount,
+				PurchaseCount = p.PurchaseCount,
+				Description = p.Description
 			})
 			.ToListAsync();
 
 	public async Task<List<object>> GetAllCategoriesAsync()
 	{
-		var loais = await _repository.Loais
-			.Select(l => new
+		var categories = await _repository.Categories
+			.Select(c => new
 			{
-				l.MaLoai,
-				l.TenLoai,
-				l.TenLoaiAlias,
-				l.MoTa,
-				l.Hinh,
-				SoHangHoa = l.HangHoas.Count
+				c.CategoryId,
+				c.CategoryName,
+				c.CategoryAlias,
+				c.Description,
+				c.Image,
+				ProductCount = c.Products.Count
 			})
 			.ToListAsync();
 
-		return loais.Cast<object>().ToList();
+		return categories.Cast<object>().ToList();
 	}
 
-	public async Task<object?> GetCategoryByIdAsync(int maLoai)
+	public async Task<object?> GetCategoryByIdAsync(int categoryId)
 	{
-		var loai = await _repository.Loais
-			.Include(l => l.HangHoas)
-			.FirstOrDefaultAsync(l => l.MaLoai == maLoai);
+		var category = await _repository.Categories
+			.Include(c => c.Products)
+			.FirstOrDefaultAsync(c => c.CategoryId == categoryId);
 
-		if (loai == null) return null;
+		if (category == null) return null;
 
 		return new
 		{
-			loai.MaLoai,
-			loai.TenLoai,
-			loai.TenLoaiAlias,
-			loai.MoTa,
-			loai.Hinh,
-			SoHangHoa = loai.HangHoas.Count
+			category.CategoryId,
+			category.CategoryName,
+			category.CategoryAlias,
+			category.Description,
+			category.Image,
+			ProductCount = category.Products.Count,
+			Products = category.Products.Select(p => new
+			{
+				p.ProductId,
+				p.ProductName,
+				p.ProductAlias,
+				p.Price,
+				p.Discount,
+				p.Image,
+				p.PurchaseCount
+			})
 		};
 	}
 
-	public async Task<Loai> CreateCategoryAsync(CreateLoaiDto dto)
+	public async Task<Category> CreateCategoryAsync(CreateCategoryDto dto)
 	{
-		var loai = new Loai
+		var category = new Category
 		{
-			TenLoai = dto.TenLoai,
-			TenLoaiAlias = dto.TenLoaiAlias ?? dto.TenLoai.ToLower().Replace(" ", "-"),
-			MoTa = dto.MoTa,
-			Hinh = dto.Hinh
+			CategoryName = dto.CategoryName,
+			CategoryAlias = dto.CategoryAlias ?? dto.CategoryName.ToLower().Replace(" ", "-"),
+			Description = dto.Description,
+			Image = dto.Image
 		};
 
-		await _repository.AddLoaiAsync(loai);
+		await _repository.AddCategoryAsync(category);
 		await _repository.SaveChangesAsync();
-		return loai;
+		return category;
 	}
 
-	public async Task<Loai?> UpdateCategoryAsync(int maLoai, UpdateLoaiDto dto)
+	public async Task<Category?> UpdateCategoryAsync(int categoryId, UpdateCategoryDto dto)
 	{
-		var loai = await _repository.FindLoaiByIdAsync(maLoai);
-		if (loai == null) return null;
+		var category = await _repository.FindCategoryByIdAsync(categoryId);
+		if (category == null) return null;
 
-		if (dto.TenLoai != null) loai.TenLoai = dto.TenLoai;
-		if (dto.TenLoaiAlias != null) loai.TenLoaiAlias = dto.TenLoaiAlias;
-		if (dto.MoTa != null) loai.MoTa = dto.MoTa;
-		if (dto.Hinh != null) loai.Hinh = dto.Hinh;
+		if (dto.CategoryName != null) category.CategoryName = dto.CategoryName;
+		if (dto.CategoryAlias != null) category.CategoryAlias = dto.CategoryAlias;
+		if (dto.Description != null) category.Description = dto.Description;
+		if (dto.Image != null) category.Image = dto.Image;
 
 		await _repository.SaveChangesAsync();
-		return loai;
+		return category;
 	}
 
-	public async Task<(bool Success, string Message)> DeleteCategoryAsync(int maLoai)
+	public async Task<(bool Success, string Message)> DeleteCategoryAsync(int categoryId)
 	{
-		var loai = await _repository.Loais.Include(l => l.HangHoas).FirstOrDefaultAsync(l => l.MaLoai == maLoai);
-		if (loai == null) return (false, "Không tìm thấy loại hàng hóa");
+		var category = await _repository.Categories.Include(c => c.Products).FirstOrDefaultAsync(c => c.CategoryId == categoryId);
+		if (category == null) return (false, "Category not found");
 
-		if (loai.HangHoas.Any())
-			return (false, "Không thể xóa loại đang có hàng hóa");
+		if (category.Products.Any())
+			return (false, "Cannot delete a category that has products");
 
-		_repository.RemoveLoai(loai);
+		_repository.RemoveCategory(category);
 		await _repository.SaveChangesAsync();
 
-		return (true, "Xóa loại thành công");
+		return (true, "Category deleted successfully");
 	}
 
-	private static HangHoaResponseDto MapHangHoaResponse(HangHoa h) => new()
+	private static ProductResponseDto MapProductResponse(Product product) => new()
 	{
-		MaHH = h.MaHH,
-		TenHH = h.TenHH,
-		TenAlias = h.TenAlias,
-		MaLoai = h.MaLoai,
-		TenLoai = h.Loai.TenLoai,
-		MoTaDonVi = h.MoTaDonVi,
-		DonGia = h.DonGia,
-		Hinh = h.Hinh,
-		NgaySX = h.NgaySX,
-		GiamGia = h.GiamGia,
-		LuotMua = h.LuotMua,
-		MoTa = h.MoTa
+		ProductId = product.ProductId,
+		ProductName = product.ProductName,
+		ProductAlias = product.ProductAlias,
+		CategoryId = product.CategoryId,
+		CategoryName = product.Category.CategoryName,
+		DescriptionUnit = product.DescriptionUnit,
+		Price = product.Price,
+		Image = product.Image,
+		CreatedDate = product.CreatedDate,
+		Discount = product.Discount,
+		PurchaseCount = product.PurchaseCount,
+		Description = product.Description
 	};
 }

@@ -19,7 +19,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "HKShop - Product Service API",
         Version = "v1",
-        Description = "Quản lý hàng hóa và loại hàng hóa"
+        Description = "Manage products and categories"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

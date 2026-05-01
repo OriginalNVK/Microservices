@@ -7,28 +7,28 @@ public class ProductDbContext : DbContext
 {
     public ProductDbContext(DbContextOptions<ProductDbContext> options) : base(options) { }
 
-    public DbSet<Loai> Loais { get; set; }
-    public DbSet<HangHoa> HangHoas { get; set; }
+    public DbSet<Category> Categories { get; set; }
+    public DbSet<Product> Products { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Loai>(entity =>
+        modelBuilder.Entity<Category>(entity =>
         {
-            entity.ToTable("Loai");
-            entity.HasKey(e => e.MaLoai);
-            entity.Property(e => e.MaLoai).UseIdentityByDefaultColumn();
+            entity.ToTable("Categories");
+            entity.HasKey(e => e.CategoryId);
+            entity.Property(e => e.CategoryId).UseIdentityByDefaultColumn();
         });
 
-        modelBuilder.Entity<HangHoa>(entity =>
+        modelBuilder.Entity<Product>(entity =>
         {
-            entity.ToTable("HangHoa");
-            entity.HasKey(e => e.MaHH);
-            entity.Property(e => e.MaHH).UseIdentityByDefaultColumn();
-            entity.HasOne(e => e.Loai)
-                  .WithMany(l => l.HangHoas)
-                  .HasForeignKey(e => e.MaLoai)
+            entity.ToTable("Products");
+            entity.HasKey(e => e.ProductId);
+            entity.Property(e => e.ProductId).UseIdentityByDefaultColumn();
+            entity.HasOne(e => e.Category)
+                  .WithMany(l => l.Products)
+                  .HasForeignKey(e => e.CategoryId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
     }

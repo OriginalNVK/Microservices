@@ -1,21 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using ProductService.Data;
 using ProductService.Models;
 
 namespace ProductService.Repositories;
-
-public interface IProductRepository
-{
-    IQueryable<Loai> Loais { get; }
-    IQueryable<HangHoa> HangHoas { get; }
-    Task<Loai?> FindLoaiByIdAsync(int maLoai);
-    Task<HangHoa?> FindHangHoaByIdAsync(int maHH);
-    Task AddLoaiAsync(Loai loai);
-    Task AddHangHoaAsync(HangHoa hangHoa);
-    void RemoveLoai(Loai loai);
-    void RemoveHangHoa(HangHoa hangHoa);
-    Task<int> SaveChangesAsync();
-}
 
 public class ProductRepository : IProductRepository
 {
@@ -26,17 +12,17 @@ public class ProductRepository : IProductRepository
         _context = context;
     }
 
-    public IQueryable<Loai> Loais => _context.Loais.AsQueryable();
-    public IQueryable<HangHoa> HangHoas => _context.HangHoas.AsQueryable();
+    public IQueryable<Category> Categories => _context.Categories.AsQueryable();
+    public IQueryable<Product> Products => _context.Products.AsQueryable();
 
-    public Task<Loai?> FindLoaiByIdAsync(int maLoai) => _context.Loais.FindAsync(maLoai).AsTask();
-    public Task<HangHoa?> FindHangHoaByIdAsync(int maHH) => _context.HangHoas.FindAsync(maHH).AsTask();
+    public Task<Category?> FindCategoryByIdAsync(int categoryId) => _context.Categories.FindAsync(categoryId).AsTask();
+    public Task<Product?> FindProductByIdAsync(int productId) => _context.Products.FindAsync(productId).AsTask();
 
-    public Task AddLoaiAsync(Loai loai) => _context.Loais.AddAsync(loai).AsTask();
-    public Task AddHangHoaAsync(HangHoa hangHoa) => _context.HangHoas.AddAsync(hangHoa).AsTask();
+    public Task AddCategoryAsync(Category category) => _context.Categories.AddAsync(category).AsTask();
+    public Task AddProductAsync(Product product) => _context.Products.AddAsync(product).AsTask();
 
-    public void RemoveLoai(Loai loai) => _context.Loais.Remove(loai);
-    public void RemoveHangHoa(HangHoa hangHoa) => _context.HangHoas.Remove(hangHoa);
+    public void RemoveCategory(Category category) => _context.Categories.Remove(category);
+    public void RemoveProduct(Product product) => _context.Products.Remove(product);
 
     public Task<int> SaveChangesAsync() => _context.SaveChangesAsync();
 }

@@ -7,16 +7,16 @@ namespace ProductService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class HangHoaController : ControllerBase
+public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
 
-    public HangHoaController(IProductService productService)
+    public ProductController(IProductService productService)
     {
         _productService = productService;
     }
 
-    /// <summary>Lấy danh sách hàng hóa với bộ lọc</summary>
+    /// <summary>Get products with filters</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] ProductQueryFilter filter)
     {
@@ -25,20 +25,20 @@ public class HangHoaController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Lấy chi tiết hàng hóa</summary>
-    [HttpGet("{maHH}")]
-    public async Task<IActionResult> GetById(int maHH)
+    /// <summary>Get product detail</summary>
+    [HttpGet("{productId}")]
+    public async Task<IActionResult> GetById(int productId)
     {
-        var hh = await _productService.GetProductByIdAsync(maHH);
+        var product = await _productService.GetProductByIdAsync(productId);
 
-        if (hh == null) return NotFound();
-        return Ok(hh);
+        if (product == null) return NotFound();
+        return Ok(product);
     }
 
-    /// <summary>Thêm hàng hóa mới (Admin)</summary>
+    /// <summary>Create a new product (Admin)</summary>
     [HttpPost]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Create([FromBody] CreateHangHoaDto dto)
+    public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -46,32 +46,32 @@ public class HangHoaController : ControllerBase
         var result = await _productService.CreateProductAsync(dto);
         if (!result.Success) return BadRequest(new { message = result.Message });
 
-        return CreatedAtAction(nameof(GetById), new { maHH = result.MaHH }, new { MaHH = result.MaHH, dto.TenHH });
+        return CreatedAtAction(nameof(GetById), new { productId = result.ProductId }, new { ProductId = result.ProductId, dto.ProductName });
     }
 
-    /// <summary>Sửa hàng hóa (Admin)</summary>
-    [HttpPut("{maHH}")]
+    /// <summary>Update a product (Admin)</summary>
+    [HttpPut("{productId}")]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Update(int maHH, [FromBody] UpdateHangHoaDto dto)
+    public async Task<IActionResult> Update(int productId, [FromBody] UpdateProductDto dto)
     {
-        var result = await _productService.UpdateProductAsync(maHH, dto);
+        var result = await _productService.UpdateProductAsync(productId, dto);
         if (result.Success) return Ok(new { message = result.Message });
-        if (result.Message == "Không tìm thấy hàng hóa") return NotFound();
+        if (result.Message == "Product not found") return NotFound();
         return BadRequest(new { message = result.Message });
     }
 
-    /// <summary>Xóa hàng hóa (Admin)</summary>
-    [HttpDelete("{maHH}")]
+    /// <summary>Delete a product (Admin)</summary>
+    [HttpDelete("{productId}")]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Delete(int maHH)
+    public async Task<IActionResult> Delete(int productId)
     {
-        var deleted = await _productService.DeleteProductAsync(maHH);
+        var deleted = await _productService.DeleteProductAsync(productId);
         if (!deleted) return NotFound();
 
-        return Ok(new { message = "Xóa hàng hóa thành công" });
+        return Ok(new { message = "Product deleted successfully" });
     }
 
-    /// <summary>Lấy hàng hóa bán chạy nhất</summary>
+    /// <summary>Get best-selling products</summary>
     [HttpGet("best-sellers")]
     public async Task<IActionResult> GetBestSellers([FromQuery] int top = 10)
     {
@@ -80,7 +80,7 @@ public class HangHoaController : ControllerBase
         return Ok(items);
     }
 
-    /// <summary>Lấy hàng hóa đang giảm giá</summary>
+    /// <summary>Get products on sale</summary>
     [HttpGet("on-sale")]
     public async Task<IActionResult> GetOnSale()
     {

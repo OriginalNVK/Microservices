@@ -3,40 +3,40 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProductService.Models;
 
-[Table("HangHoa")]
-public class HangHoa
+[Table("Products")]
+public class Product
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int MaHH { get; set; }
+    public int ProductId { get; set; }
 
     [Required]
     [MaxLength(100)]
-    public string TenHH { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
 
     [MaxLength(100)]
-    public string? TenAlias { get; set; }
+    public string? ProductAlias { get; set; }
 
-    public int MaLoai { get; set; }
+    public int CategoryId { get; set; }
 
     [MaxLength(50)]
-    public string? MoTaDonVi { get; set; }
+    public string? DescriptionUnit { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    public decimal? DonGia { get; set; }
+    public decimal? Price { get; set; }
 
     [MaxLength(255)]
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 
-    public DateOnly NgaySX { get; set; }
+    public DateOnly CreatedDate { get; set; }
 
     [Column(TypeName = "decimal(5,2)")]
-    public decimal GiamGia { get; set; } = 0;
+    public decimal Discount { get; set; } = 0;
 
-    public int LuotMua { get; set; } = 0;
+    public int PurchaseCount { get; set; } = 0;
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 
-    [ForeignKey(nameof(MaLoai))]
-    public Loai Loai { get; set; } = null!;
+    [ForeignKey(nameof(CategoryId))]
+    public Category Category { get; set; } = null!;
 }

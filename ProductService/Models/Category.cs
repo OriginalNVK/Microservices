@@ -3,23 +3,23 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProductService.Models;
 
-[Table("Loai")]
-public class Loai
+[Table("Categories")]
+public class Category
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int MaLoai { get; set; }
+    public int CategoryId { get; set; }
 
     [Required]
     [MaxLength(50)]
-    public string TenLoai { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
 
     [MaxLength(50)]
-    public string? TenLoaiAlias { get; set; }
+    public string? CategoryAlias { get; set; }
 
-    public string? MoTa { get; set; }
+    public string? Description { get; set; }
 
-    public string? Hinh { get; set; }
+    public string? Image { get; set; }
 
-    public ICollection<HangHoa> HangHoas { get; set; } = new List<HangHoa>();
+    public ICollection<Product> Products { get; set; } = new List<Product>();
 }

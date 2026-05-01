@@ -7,67 +7,67 @@ namespace ProductService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LoaiController : ControllerBase
+public class CategoryController : ControllerBase
 {
     private readonly IProductService _productService;
 
-    public LoaiController(IProductService productService)
+    public CategoryController(IProductService productService)
     {
         _productService = productService;
     }
 
-    /// <summary>Lấy tất cả loại hàng hóa</summary>
+    /// <summary>Get all categories</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var loais = await _productService.GetAllCategoriesAsync();
+        var categories = await _productService.GetAllCategoriesAsync();
 
-        return Ok(loais);
+        return Ok(categories);
     }
 
-    /// <summary>Lấy chi tiết loại hàng hóa</summary>
-    [HttpGet("{maLoai}")]
-    public async Task<IActionResult> GetById(int maLoai)
+    /// <summary>Get category detail</summary>
+    [HttpGet("{categoryId}")]
+    public async Task<IActionResult> GetById(int categoryId)
     {
-        var loai = await _productService.GetCategoryByIdAsync(maLoai);
+        var category = await _productService.GetCategoryByIdAsync(categoryId);
 
-        if (loai == null) return NotFound();
+        if (category == null) return NotFound();
 
-        return Ok(loai);
+        return Ok(category);
     }
 
-    /// <summary>Thêm loại hàng hóa mới (Admin)</summary>
+    /// <summary>Create a new category (Admin)</summary>
     [HttpPost]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Create([FromBody] CreateLoaiDto dto)
+    public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var loai = await _productService.CreateCategoryAsync(dto);
+        var category = await _productService.CreateCategoryAsync(dto);
 
-        return CreatedAtAction(nameof(GetById), new { maLoai = loai.MaLoai }, loai);
+        return CreatedAtAction(nameof(GetById), new { categoryId = category.CategoryId }, category);
     }
 
-    /// <summary>Cập nhật loại hàng hóa (Admin)</summary>
-    [HttpPut("{maLoai}")]
+    /// <summary>Update a category (Admin)</summary>
+    [HttpPut("{categoryId}")]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Update(int maLoai, [FromBody] UpdateLoaiDto dto)
+    public async Task<IActionResult> Update(int categoryId, [FromBody] UpdateCategoryDto dto)
     {
-        var loai = await _productService.UpdateCategoryAsync(maLoai, dto);
-        if (loai == null) return NotFound();
+        var category = await _productService.UpdateCategoryAsync(categoryId, dto);
+        if (category == null) return NotFound();
 
-        return Ok(loai);
+        return Ok(category);
     }
 
-    /// <summary>Xóa loại hàng hóa (Admin)</summary>
-    [HttpDelete("{maLoai}")]
+    /// <summary>Delete a category (Admin)</summary>
+    [HttpDelete("{categoryId}")]
     [Authorize(Roles = "1")]
-    public async Task<IActionResult> Delete(int maLoai)
+    public async Task<IActionResult> Delete(int categoryId)
     {
-        var result = await _productService.DeleteCategoryAsync(maLoai);
+        var result = await _productService.DeleteCategoryAsync(categoryId);
         if (result.Success) return Ok(new { message = result.Message });
-        if (result.Message == "Không tìm thấy loại hàng hóa") return NotFound();
+        if (result.Message == "Category not found") return NotFound();
 
         return BadRequest(new { message = result.Message });
     }
