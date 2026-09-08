@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ProductService.Data;
 using ProductService.Models;
 
@@ -12,17 +13,38 @@ public class ProductRepository : IProductRepository
         _context = context;
     }
 
-    public IQueryable<Category> Categories => _context.Categories.AsQueryable();
-    public IQueryable<Product> Products => _context.Products.AsQueryable();
+    public Product? GetById(int id)
+    {
+        return _context.Products.Include(p => p.Category).FirstOrDefault(p => p.Id == id);
+    }
 
-    public Task<Category?> FindCategoryByIdAsync(int categoryId) => _context.Categories.FindAsync(categoryId).AsTask();
-    public Task<Product?> FindProductByIdAsync(int productId) => _context.Products.FindAsync(productId).AsTask();
+    public Product Add(Product product)
+    {
+        _context.Products.Add(product);
+        _context.SaveChanges();
+        return product;
+    }
 
-    public Task AddCategoryAsync(Category category) => _context.Categories.AddAsync(category).AsTask();
-    public Task AddProductAsync(Product product) => _context.Products.AddAsync(product).AsTask();
+    public Product Update(Product product)
+    {
+        _context.Products.Update(product);
+        _context.SaveChanges();
+        return product;
+    }
+    public bool Delete(Product product)
+    {
+        _context.Products.Remove(product);
+        _context.SaveChanges();
+        return true;
+    }
 
-    public void RemoveCategory(Category category) => _context.Categories.Remove(category);
-    public void RemoveProduct(Product product) => _context.Products.Remove(product);
+    public List<Product> GetAll()
+    {
+        return _context.Products.Include(p => p.Category).ToList();
+    }
 
-    public Task<int> SaveChangesAsync() => _context.SaveChangesAsync();
+    public IQueryable<Product> Query()
+    {
+        return _context.Products.AsQueryable();
+    }
 }
