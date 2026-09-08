@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ProductService.DTOs;
+using ProductService.Models;
 using ProductService.Services;
 
 namespace ProductService.Controllers;
@@ -9,66 +8,50 @@ namespace ProductService.Controllers;
 [Route("api/[controller]")]
 public class CategoryController : ControllerBase
 {
-    private readonly IProductService _productService;
+    private readonly ICategoryService _categoryService;
 
-    public CategoryController(IProductService productService)
+    public CategoryController(ICategoryService categoryService)
     {
-        _productService = productService;
+        _categoryService = categoryService;
     }
 
     /// <summary>Get all categories</summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public List<Category> GetAll()
     {
-        var categories = await _productService.GetAllCategoriesAsync();
-
-        return Ok(categories);
+        return _categoryService.GetAllCategories();
     }
 
     /// <summary>Get category detail</summary>
     [HttpGet("{categoryId}")]
-    public async Task<IActionResult> GetById(int categoryId)
+    public Category? GetById(int categoryId)
     {
-        var category = await _productService.GetCategoryByIdAsync(categoryId);
-
-        if (category == null) return NotFound();
-
-        return Ok(category);
+        return _categoryService.GetCategoryById(categoryId);
     }
 
     /// <summary>Create a new category (Admin)</summary>
     [HttpPost]
-    [Authorize(Roles = "1")]
-    public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
+    public Category Create([FromBody] string categoryName)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        {
+            throw new ArgumentException("Invalid category name");
+        }
 
-        var category = await _productService.CreateCategoryAsync(dto);
-
-        return CreatedAtAction(nameof(GetById), new { categoryId = category.CategoryId }, category);
+        return _categoryService.CreateCategory(categoryName);
     }
 
     /// <summary>Update a category (Admin)</summary>
     [HttpPut("{categoryId}")]
-    [Authorize(Roles = "1")]
-    public async Task<IActionResult> Update(int categoryId, [FromBody] UpdateCategoryDto dto)
+    public Category Update(int categoryId, [FromBody] string categoryName)
     {
-        var category = await _productService.UpdateCategoryAsync(categoryId, dto);
-        if (category == null) return NotFound();
-
-        return Ok(category);
+        return _categoryService.UpdateCategory(categoryId, categoryName);
     }
 
     /// <summary>Delete a category (Admin)</summary>
     [HttpDelete("{categoryId}")]
-    [Authorize(Roles = "1")]
-    public async Task<IActionResult> Delete(int categoryId)
+    public bool Delete(int categoryId)
     {
-        var result = await _productService.DeleteCategoryAsync(categoryId);
-        if (result.Success) return Ok(new { message = result.Message });
-        if (result.Message == "Category not found") return NotFound();
-
-        return BadRequest(new { message = result.Message });
+        return _categoryService.DeleteCategory(categoryId);
     }
 }
